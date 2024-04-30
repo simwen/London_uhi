@@ -6,7 +6,7 @@ Created on Fri Mar  1 19:02:56 2024
 
 # Input USGS EarthExplorer credentials https://earthexplorer.usgs.gov
 username = "SimWen"
-password = "DumisaniMa-Afrika4"
+password = "..."
 
 # Load required libs
 from landsatxplore.api import API
@@ -18,7 +18,6 @@ import glob
 import tarfile
 import tifffile as tiff
 import numpy as np
-import matplotlib.pyplot as plt
 import rasterio as rio
 import utm 
 import rioxarray as rxr
@@ -28,7 +27,6 @@ from rasterio.enums import Resampling
 from rasterio.warp import calculate_default_transform, reproject, Resampling
 from rasterio.plot import show
 import geopandas as gpd
-from tqdm import tqdm
 from rasterio.mask import mask
 import plotly.express as px
 from scipy.stats import percentileofscore
