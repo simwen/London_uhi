@@ -6,7 +6,7 @@ Created on Fri Mar  1 19:02:56 2024
 
 # Input USGS EarthExplorer credentials https://earthexplorer.usgs.gov
 username = "SimWen"
-password = "..."
+password = "DumisaniMa-Afrika4"
 
 # Load required libs
 from landsatxplore.api import API
@@ -32,6 +32,8 @@ from tqdm import tqdm
 from rasterio.mask import mask
 import plotly.express as px
 from scipy.stats import percentileofscore
+from datetime import date
+import sys
 
 # Set directories
 BASE_DIR = '/Users/Sim/Documents/Other/Programming/Personal Projects/Climate & Health/Landsat'
@@ -39,6 +41,7 @@ DATA_DIR = os.path.join(BASE_DIR,'data')
 RAW_DIR = os.path.join(DATA_DIR,'raw')
 INT_DIR = os.path.join(DATA_DIR, 'intermediate')
 FIN_DIR = os.path.join(DATA_DIR, 'final')
+
 
 ## 1. Find and save the data --------------------------------------------------
 
@@ -254,6 +257,53 @@ for index, row in df_scenes_filtered.iterrows():
     scale_to_celcius(tif_name = f'bng_{pane_id}', plot = False)
 
 
+## 5. Average temps ------------------------------------------
+
+today = date.today()
+
+def average_tifs():
+    
+    """
+    Loads in each tif, sums up the values, then divides by length
+    """
+    
+    summed_temps_array = None
+    
+    for index, row in df_scenes_filtered.iterrows():
+        
+        pane_id = row['display_id']
+        print(f'summing {pane_id}')
+    
+        with rio.open(os.path.join(INT_DIR,f'bng_{pane_id}_celcius.tif')) as src:
+            
+            if summed_temps_array is None:
+                summed_temps_array = src.read(1)
+                
+            # Check dimensions same as previous
+            elif width == src.width and height == src.height:
+                summed_temps_array += src.read(1)
+                
+            else:
+                print("Error - tifs different shapes")
+                sys.exit()
+            
+            # Set widths/heights
+            width, height = src.width, src.height
+    
+    avg_temp = summed_temps_array / len(df_scenes_filtered)
+    
+    metadata = src.meta.copy()
+    
+    # Open the new file for writing
+    with rio.open(os.path.join(INT_DIR,f'{today}_celcius.tif'), 'w', **metadata) as dst:
+        # Write the corrected temperature data to the new file
+        dst.write(avg_temp, 1)
+    
+    return(avg_temp)
+
+avg_temp = average_tifs()
 
 
+    
+    
 
