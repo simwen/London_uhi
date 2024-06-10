@@ -4,43 +4,28 @@ Created on Fri Mar  1 19:02:56 2024
 @author: Sim
 """
 
-# Input USGS EarthExplorer credentials https://earthexplorer.usgs.gov
-username = "SimWen"
-password = "DumisaniMa-Afrika4"
-
 # Load required libs
 from landsatxplore.api import API
-import json
+#import json
 from landsatxplore.earthexplorer import EarthExplorer
 import os
 import pandas as pd
-import glob
-import tarfile
-import tifffile as tiff
-import numpy as np
+#import glob
+#import tarfile
+#import tifffile as tiff
+#import numpy as np
 import matplotlib.pyplot as plt
 import rasterio as rio
-import utm 
-import rioxarray as rxr
-import earthpy as et
-import earthpy.spatial as es
+#import utm 
+#import rioxarray as rxr
+#import earthpy as et
+#import earthpy.spatial as es
 from rasterio.enums import Resampling
-from rasterio.warp import calculate_default_transform, reproject, Resampling
+#from rasterio.warp import calculate_default_transform, reproject, Resampling
 from rasterio.plot import show
 import geopandas as gpd
-from tqdm import tqdm
 from rasterio.mask import mask
-import plotly.express as px
-from scipy.stats import percentileofscore
-from datetime import date
 import sys
-
-# Set directories
-BASE_DIR = '/Users/Sim/Documents/Other/Programming/Personal Projects/Climate & Health/Landsat'
-DATA_DIR = os.path.join(BASE_DIR,'data')
-RAW_DIR = os.path.join(DATA_DIR,'raw')
-INT_DIR = os.path.join(DATA_DIR, 'intermediate')
-FIN_DIR = os.path.join(DATA_DIR, 'final')
 
 
 ## 1. Find and save the data --------------------------------------------------
@@ -259,8 +244,6 @@ for index, row in df_scenes_filtered.iterrows():
 
 ## 5. Average temps ------------------------------------------
 
-today = date.today()
-
 def average_tifs():
     
     """
@@ -306,3 +289,4 @@ avg_temp = average_tifs()
 
     
     
+
