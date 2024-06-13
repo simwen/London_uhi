@@ -45,20 +45,19 @@ if not os.path.exists(os.path.join(INT_DIR, f'shapefile {today}')):
 gdf_london_temps.to_file(os.path.join(INT_DIR, f'shapefile {today}', f"celcius_gdf.shp"))
 
                          
-## 2. Average by LAD -----------------------------------------------
+## 2. Average by LAD/LSOA -----------------------------------------------
 
-def average_by_geog(geography = 'LAD'):
+def average_by_geog(dataframe = london_lsoas_bng, geography = 'LAD'):
     # collapse the GeoDataFrame based on 'LAD22NM'
-    london_geog = london_lsoas_bng
     if geography == 'LAD':
-        london_geog = london_geog.dissolve(by='LAD22NM')
-    london_geog = london_geog.reset_index()
+        dataframe = dataframe.dissolve(by='LAD22NM')
+    dataframe = dataframe.reset_index()
     
     # empty list for LAD temperatures
     avg_temp_list = []
     
     # For each LAD, creates boolean of which pixel in LAD, then averages temperatures for each LAD
-    for index, polygon in london_geog.iterrows():
+    for index, polygon in dataframe.iterrows():
         # creates boolean mask for if points in gdf_london_temps are within the each london_lsoas_bng polygon
         mask = gdf_london_temps.within(polygon['geometry'])
         # calculates average pixel value (temp) where mask is true 
@@ -66,14 +65,17 @@ def average_by_geog(geography = 'LAD'):
         avg_temp_list.append(avg_temp)
     
     # Add the average temp values to df1
-    london_geog.loc[:, 'avg_temp'] = avg_temp_list
+    dataframe.loc[:, 'avg_temp'] = avg_temp_list
     
     # Clean and save out
-    london_geog = london_geog.drop(['level_0', 'index'], axis=1)
-    
-    return(london_geog)
+    dataframe = dataframe.drop(['level_0', 'index'], axis=1)
+
+    output_file_path = os.path.join(FIN_DIR,f'{today}_{geography}_temps')
+
+    return {"output_data": dataframe, "output_file_path": output_file_path}
     
 # Save averaged data
-output_file_path = os.path.join(FIN_DIR,f'{today}_{geography}_temps')
-london_geog.to_file(output_file_path, driver='ESRI Shapefile')
-    
+result = average_by_geog()
+london_lad = result["output_data"]
+london_lad.to_file(result["output_file_path"], driver='ESRI Shapefile')
+
