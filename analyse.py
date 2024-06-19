@@ -18,7 +18,7 @@ today = '2024-04-30'
 ## 1. Create geodataframe -----------------------------------------------
 
 # Load the raster data & transformation info
-with rio.open(os.path.join(INT_DIR,f'{today}_celcius.tif')) as src_avg:
+with rio.open(os.path.join(INT_DIR,f'{today}_avg_celcius.tif')) as src_avg:
     
     raster_data = src_avg.read(1)  
     transform = src_avg.transform
@@ -47,7 +47,7 @@ gdf_london_temps.to_file(os.path.join(INT_DIR, f'shapefile {today}', f"celcius_g
                          
 ## 2. Average by LAD/LSOA -----------------------------------------------
 
-def average_by_geog(dataframe = london_lsoas_bng, geography = 'LAD'):
+def average_by_geog(dataframe = london_lsoas_lads_bng, geography = 'LAD'):
     # collapse the GeoDataFrame based on 'LAD22NM'
     if geography == 'LAD':
         dataframe = dataframe.dissolve(by='LAD22NM')
@@ -58,7 +58,7 @@ def average_by_geog(dataframe = london_lsoas_bng, geography = 'LAD'):
     
     # For each LAD, creates boolean of which pixel in LAD, then averages temperatures for each LAD
     for index, polygon in dataframe.iterrows():
-        # creates boolean mask for if points in gdf_london_temps are within the each london_lsoas_bng polygon
+        # creates boolean mask for if points in gdf_london_temps are within the each london_lsoas_lads_bng polygon
         mask = gdf_london_temps.within(polygon['geometry'])
         # calculates average pixel value (temp) where mask is true 
         avg_temp = gdf_london_temps.loc[mask, 'Pixel_Value'].mean()
@@ -76,6 +76,17 @@ def average_by_geog(dataframe = london_lsoas_bng, geography = 'LAD'):
     
 # Save averaged data
 result = average_by_geog()
-london_lad = result["output_data"]
-london_lad.to_file(result["output_file_path"], driver='ESRI Shapefile')
+london_avg_temps = result["output_data"]
+london_avg_temps.to_file(result["output_file_path"], driver='ESRI Shapefile')
+
+# Plotly uses standard lat-longs so we change the crs
+desired_crs = 'EPSG:4326'
+london_temps_plotly = london_avg_temps.to_crs(desired_crs)
+
+# The index of the dataframe is used as the choropleth labels
+london_temps_plotly = london_temps_plotly.set_index('LSOA21NM')
+
+
+
+
 
