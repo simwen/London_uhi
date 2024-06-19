@@ -178,16 +178,16 @@ def run(username, password, today, ALL_RUNS, RAW_DIR, INT_DIR):
     ## https://geoportal.statistics.gov.uk/datasets/bb427d36197443959de8a1462c8f1c55_0/explore
     england_lsoas_path = os.path.join(ALL_RUNS, 'LSOA_2021_EW_BFC_V8.shp')
     england_lsoas = gpd.read_file(england_lsoas_path)
-    london_lsoas_bng = pd.merge(england_lsoas, lsoa_list, on='LSOA21CD', how='left')
+    london_lsoas_lads_bng = pd.merge(england_lsoas, lsoa_list, on='LSOA21CD', how='left')
 
     # Filter rows where 'LEP' is 'London'
-    london_lsoas_bng = london_lsoas_bng[london_lsoas_bng['LEP21NM1'] == 'London']
+    london_lsoas_lads_bng = london_lsoas_lads_bng[london_lsoas_lads_bng['LEP21NM1'] == 'London']
 
     # Crop tif to square
-    maxx = london_lsoas_bng['geometry'].bounds['maxx'].max()
-    maxy = london_lsoas_bng['geometry'].bounds['maxy'].max()
-    minx = london_lsoas_bng['geometry'].bounds['minx'].min()
-    miny = london_lsoas_bng['geometry'].bounds['miny'].min()
+    maxx = london_lsoas_lads_bng['geometry'].bounds['maxx'].max()
+    maxy = london_lsoas_lads_bng['geometry'].bounds['maxy'].max()
+    minx = london_lsoas_lads_bng['geometry'].bounds['minx'].min()
+    miny = london_lsoas_lads_bng['geometry'].bounds['miny'].min()
 
     #minx, miny, maxx, maxy = 500000, 150000, 565000, 205000
 
@@ -305,7 +305,7 @@ def run(username, password, today, ALL_RUNS, RAW_DIR, INT_DIR):
         metadata = src.meta.copy()
         
         # Open the new file for writing
-        with rio.open(os.path.join(INT_DIR,f'{today}_celcius.tif'), 'w', **metadata) as dst:
+        with rio.open(os.path.join(INT_DIR,f'{today}_avg_celcius.tif'), 'w', **metadata) as dst:
             # Write the corrected temperature data to the new file
             dst.write(avg_temp, 1)
         
