@@ -19,7 +19,7 @@ BASE_DIR = 'Z:\Resources\Personal\Simeon Wentzel\london_uhi_data'
 DATA_DIR = os.path.join(BASE_DIR,'data')
 
 today = date.today()
-RUN_NAME = f"{today}-2"
+RUN_NAME = f"{today}-1"
 
 ALL_RUNS = os.path.join(DATA_DIR, 'all_runs')
 RAW_DIR = os.path.join(DATA_DIR, RUN_NAME,'raw')
@@ -36,12 +36,17 @@ for directory in directories:
 print("1: Finished config.py")
 
 import extract
-#import analyse
+import analyse
 
 extract.run(username = username, 
-            password = password, 
-            today = today, 
+           password = password, 
+           today = today, 
+           ALL_RUNS = ALL_RUNS,
+           RAW_DIR = RAW_DIR, 
+           INT_DIR = INT_DIR)
+
+analyse.run(today = today, 
             ALL_RUNS = ALL_RUNS,
-            RAW_DIR = RAW_DIR, 
-            INT_DIR = INT_DIR)
+            INT_DIR = INT_DIR,
+            FIN_DIR = FIN_DIR)
 
