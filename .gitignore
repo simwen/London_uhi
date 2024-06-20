@@ -165,3 +165,4 @@ old
 data
 *.pdf
 *.html
+.vscode
