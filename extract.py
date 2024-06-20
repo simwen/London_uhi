@@ -5,22 +5,14 @@ Created on Fri Mar  1 19:02:56 2024
 """
 # Load required libs
 from landsatxplore.api import API
-#import json
 from landsatxplore.earthexplorer import EarthExplorer
 import os
 import pandas as pd
-#import glob
 import tarfile
-#import tifffile as tiff
-#import numpy as np
 import matplotlib.pyplot as plt
 import rasterio as rio
-#import utm 
-#import rioxarray as rxr
-#import earthpy as et
-#import earthpy.spatial as es
 from rasterio.enums import Resampling
-#from rasterio.warp import calculate_default_transform, reproject, Resampling
+from rasterio.warp import calculate_default_transform, reproject, Resampling
 from rasterio.plot import show
 import geopandas as gpd
 from rasterio.mask import mask
@@ -28,7 +20,9 @@ import sys
 
 def run(username, password, today, ALL_RUNS, RAW_DIR, INT_DIR):
 
+    print("##################################################")
     print("2: Starting extract.py")
+    print("##################################################")
 
     ## 1. Find and save the data --------------------------------------------------
 
@@ -77,6 +71,9 @@ def run(username, password, today, ALL_RUNS, RAW_DIR, INT_DIR):
     ldn_lads = gpd.GeoDataFrame(ldn_lads,geometry='geometry')
     ldn_outline = ldn_lads.dissolve(by='LEP21NM1')[['geometry']]
 
+    # convert ldn_outline crs to enable cropping
+    ldn_outline.set_crs(epsg=27700, inplace=True)
+    ldn_outline = ldn_outline.to_crs(epsg=4326)
 
     ## 2. Convert each pane's CRS to BNG -----------------------------------------------
 
@@ -129,7 +126,8 @@ def run(username, password, today, ALL_RUNS, RAW_DIR, INT_DIR):
     # Download and extract the scenes 
     for index, row in df_scenes.iterrows():
         pane_id = row['display_id']
-        # print(pane_id)
+        
+        print(f'Starting extracting scene {index} / {len(df_scenes)}')
 
         try: 
             ee.download(pane_id, output_dir= RAW_DIR)
@@ -173,7 +171,7 @@ def run(username, password, today, ALL_RUNS, RAW_DIR, INT_DIR):
     df_scenes_filtered = df_scenes[~mask]
 
     print(f'df_scenes_filtered has shape: {df_scenes_filtered.shape}')
-    
+   
     # Load england LSOAs
     ## https://geoportal.statistics.gov.uk/datasets/bb427d36197443959de8a1462c8f1c55_0/explore
     england_lsoas_path = os.path.join(ALL_RUNS, 'LSOA_2021_EW_BFC_V8.shp')
@@ -182,6 +180,7 @@ def run(username, password, today, ALL_RUNS, RAW_DIR, INT_DIR):
 
     # Filter rows where 'LEP' is 'London'
     london_lsoas_lads_bng = london_lsoas_lads_bng[london_lsoas_lads_bng['LEP21NM1'] == 'London']
+    london_lsoas_lads_bng.to_csv(os.path.join(ALL_RUNS, 'london_lsoas_lads_bng.csv'))
 
     # Crop tif to square
     maxx = london_lsoas_lads_bng['geometry'].bounds['maxx'].max()
