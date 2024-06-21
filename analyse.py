@@ -12,79 +12,100 @@ import geopandas as gpd
 import pandas as pd
 import os
 from shapely.geometry import Point
+from tqdm import tqdm
+from shapely import wkt
 
-today = '2024-04-30'
+def run(today, ALL_RUNS, INT_DIR, FIN_DIR):
 
-## 1. Create geodataframe -----------------------------------------------
+    print("##################################################")
+    print("3: Starting analyse.py")
+    print("##################################################")
 
-# Load the raster data & transformation info
-with rio.open(os.path.join(INT_DIR,f'{today}_avg_celcius.tif')) as src_avg:
-    
-    raster_data = src_avg.read(1)  
-    transform = src_avg.transform
+    ## 1. Create geodataframe -----------------------------------------------
 
-# Get the width and height of the raster
-width = raster_data.shape[1]
-height = raster_data.shape[0]
+    print('Creating geodataframe')
 
-# Get the coordinates of the pixel centers
-x_coords, y_coords = zip(*[transform * (j + 0.5, i + 0.5) for i in range(height) for j in range(width)])
+    # Load the raster data & transformation info
+    with rio.open(os.path.join(INT_DIR,f'{today}_avg_celcius.tif')) as src_avg:
+        
+        raster_data = src_avg.read(1)  
+        transform = src_avg.transform
 
-# Flatten the raster values
-pixel_values = raster_data.flatten()
+    # Get the width and height of the raster
+    width = raster_data.shape[1]
+    height = raster_data.shape[0]
 
-# Create pandas dataframe
-london_temps = pd.DataFrame({'Pixel_Value': pixel_values, 'longitude': x_coords, 'latitude': y_coords})
+    # Get the coordinates of the pixel centers
+    x_coords, y_coords = zip(*[transform * (j + 0.5, i + 0.5) for i in range(height) for j in range(width)])
 
-# Convert to a GeoDataFrame of temperatures and points (pixel coords)
-geometry_london_temps = [Point(xy) for xy in zip(london_temps['longitude'], london_temps['latitude'])]
-gdf_london_temps = gpd.GeoDataFrame(london_temps, geometry=gpd.GeoSeries(geometry_london_temps))
+    # Flatten the raster values
+    pixel_values = raster_data.flatten()
 
-if not os.path.exists(os.path.join(INT_DIR, f'shapefile {today}')):
-    os.makedirs(os.path.join(INT_DIR, f'shapefile {today}'))
-gdf_london_temps.to_file(os.path.join(INT_DIR, f'shapefile {today}', f"celcius_gdf.shp"))
+    # Create pandas dataframe
+    london_temps = pd.DataFrame({'Pixel_Value': pixel_values, 'longitude': x_coords, 'latitude': y_coords})
 
-                         
-## 2. Average by LAD/LSOA -----------------------------------------------
+    # Convert to a GeoDataFrame of temperatures and points (pixel coords)
+    geometry_london_temps = [Point(xy) for xy in zip(london_temps['longitude'], london_temps['latitude'])]
+    gdf_london_temps = gpd.GeoDataFrame(london_temps, geometry=gpd.GeoSeries(geometry_london_temps))
 
-def average_by_geog(dataframe = london_lsoas_lads_bng, geography = 'LAD'):
-    # collapse the GeoDataFrame based on 'LAD22NM'
-    if geography == 'LAD':
-        dataframe = dataframe.dissolve(by='LAD22NM')
-    dataframe = dataframe.reset_index()
-    
-    # empty list for LAD temperatures
-    avg_temp_list = []
-    
-    # For each LAD, creates boolean of which pixel in LAD, then averages temperatures for each LAD
-    for index, polygon in dataframe.iterrows():
-        # creates boolean mask for if points in gdf_london_temps are within the each london_lsoas_lads_bng polygon
-        mask = gdf_london_temps.within(polygon['geometry'])
-        # calculates average pixel value (temp) where mask is true 
-        avg_temp = gdf_london_temps.loc[mask, 'Pixel_Value'].mean()
-        avg_temp_list.append(avg_temp)
-    
-    # Add the average temp values to df1
-    dataframe.loc[:, 'avg_temp'] = avg_temp_list
-    
-    # Clean and save out
-    dataframe = dataframe.drop(['level_0', 'index'], axis=1)
+    if not os.path.exists(os.path.join(INT_DIR, f'shapefile {today}')):
+        os.makedirs(os.path.join(INT_DIR, f'shapefile {today}'))
+    gdf_london_temps.to_file(os.path.join(INT_DIR, f'shapefile {today}', "celcius_gdf.shp"))
 
-    output_file_path = os.path.join(FIN_DIR,f'{today}_{geography}_temps')
+                            
+    ## 2. Average by LAD/LSOA -----------------------------------------------
 
-    return {"output_data": dataframe, "output_file_path": output_file_path}
-    
-# Save averaged data
-result = average_by_geog()
-london_avg_temps = result["output_data"]
-london_avg_temps.to_file(result["output_file_path"], driver='ESRI Shapefile')
+    print('Average by LAD or LSOA')
+    london_lsoas_lads_bng =  pd.read_csv(os.path.join(ALL_RUNS, 'london_lsoas_lads_bng.csv'))
+    london_lsoas_lads_bng['geometry'] = london_lsoas_lads_bng['geometry'].apply(wkt.loads)
 
-# Plotly uses standard lat-longs so we change the crs
-desired_crs = 'EPSG:4326'
-london_temps_plotly = london_avg_temps.to_crs(desired_crs)
+    def average_by_geog(dataframe = london_lsoas_lads_bng, geography = 'LAD'):
+        
+        dataframe = gpd.GeoDataFrame(dataframe, geometry='geometry')
 
-# The index of the dataframe is used as the choropleth labels
-london_temps_plotly = london_temps_plotly.set_index('LSOA21NM')
+        # collapse the GeoDataFrame based on 'LAD22NM'
+        if geography == 'LAD':
+            dataframe = dataframe.dissolve(by='LAD22NM')
+        dataframe = dataframe.reset_index()
+        
+        # empty list for LAD temperatures
+        avg_temp_list = []
+        
+        # For each LAD, creates boolean of which pixel in LAD, then averages temperatures for each LAD
+        for index, polygon in tqdm(dataframe.iterrows(), total=dataframe.shape[0], desc=f"Averaging by {geography}"):
+            # creates boolean mask for if points in gdf_london_temps are within each london_lsoas_lads_bng polygon
+            mask = gdf_london_temps.within(polygon['geometry'])
+            # calculates average pixel value (temp) where mask is true 
+            avg_temp = gdf_london_temps.loc[mask, 'Pixel_Value'].mean()
+            avg_temp_list.append(avg_temp)
+        
+        # Add the average temp values to df1
+        dataframe.loc[:, 'avg_temp'] = avg_temp_list
+        
+        # Clean and save out
+        #dataframe = dataframe.drop(['level_0', 'index'], axis=1)
+
+        output_file_path = os.path.join(FIN_DIR,f'{today}_{geography}_temps')
+
+        return {"output_data": dataframe, "output_file_path": output_file_path}
+        
+    # Save averaged data
+    try:
+        result = average_by_geog()
+        london_avg_temps = result["output_data"]
+        london_avg_temps.to_file(result["output_file_path"], driver='ESRI Shapefile')
+    except Exception as e:
+        import pdb
+        print(f"Exception occurred: {e}")
+        pdb.post_mortem()
+
+    result = average_by_geog(geography='LSOA')
+    london_avg_temps = result["output_data"]
+    london_avg_temps.to_file(result["output_file_path"], driver='ESRI Shapefile')
+
+    print("##################################################")
+    print("3: Finished analyse.py")
+    print("##################################################")
 
 
 
