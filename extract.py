@@ -73,6 +73,7 @@ def run(username, password, today, ALL_RUNS, RAW_DIR, INT_DIR):
 
     # convert ldn_outline crs to enable cropping
     ldn_outline.set_crs(epsg=27700, inplace=True)
+    ldn_outline.to_csv(os.path.join(ALL_RUNS, 'london_outline_bng.csv'))
     ldn_outline = ldn_outline.to_crs(epsg=4326)
 
     ## 2. Convert each pane's CRS to BNG -----------------------------------------------
