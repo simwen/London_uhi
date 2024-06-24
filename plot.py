@@ -8,6 +8,9 @@ import rasterio as rio
 from rasterio.plot import show
 from rasterio.mask import mask
 from shapely import wkt
+import plotly.express as px
+from scipy.stats import percentileofscore
+import plotly.graph_objects as go
 
 ## 1. Plotly of temperature by LAD ----------------------------------------------
 run = '2024-06-20'
@@ -17,29 +20,38 @@ run = '2024-06-20'
 geo_file_path = os.path.join(DATA_DIR, f'{run}-1', 'final', f'{run}_LAD_temps',f'{run}_LAD_temps.shp')
 london_avg_temps = gpd.read_file(geo_file_path)
 
-desired_crs = 'EPSG:4326'
-london_temps_plotly = london_avg_temps.to_crs(desired_crs)
+london_avg_temps = london_avg_temps.set_crs('EPSG:27700')
+london_temps_plotly = london_avg_temps.to_crs('EPSG:4326')
 
 # The index of the dataframe is used as the choropleth labels
 london_temps_plotly = london_temps_plotly.set_index('LAD22NM')
 
-# Create an interactive choropleth map with Plotly Express
+# london_temps_plotly = london_temps_plotly.round({'avg_temp':2})
+
+# Function to create percentile of column
+def create_percentile(df, col, new_name):
+    df[f'{new_name}'] = df[f'{col}'].apply(
+    lambda x: round(percentileofscore(df[f'{col}'], x, kind='rank'),0)
+)
+create_percentile(df = london_temps_plotly, col = 'avg_temp', new_name = 'perc_temp')
+
+# Create an interactive temp map
 fig = px.choropleth_mapbox(
     london_temps_plotly,
     geojson=london_temps_plotly.geometry,
     locations=london_temps_plotly.index,
-    color='avg_temp',
+    color='perc_temp',
     color_continuous_scale="matter",
     mapbox_style="carto-positron",
     center={"lat": london_temps_plotly.geometry.centroid.y.mean(), "lon": london_temps_plotly.geometry.centroid.x.mean()},
-    zoom=8.5,
-    opacity=0.9,
-    labels={'avg_temp': 'Average Temperature', '_index': ""},
-    title='Average Temperature by LAD'
+    zoom=9.5,
+    opacity=0.95,
+    labels={'perc_temp': 'Temperature percentile', '_index': "Local Authority"},
+    title='Temperature Percentile'
 )
 
 # save the plot
-fig.write_html("./avg_temp_by_lad_map.html")
+fig.write_html(os.path.join(DATA_DIR, f'{run}-1', 'final', "temp_by_lad_map.html"))
 
 
 ## 2. Pixel plot ------------------------------------
@@ -67,11 +79,11 @@ gdf_london_temps_crop.plot(column='Pixel_Valu', ax=ax,
 ax.set_axis_off()
 
 # Define the formatter function
-def format_ticks(value, tick_number):
+def format_axis_ticks(value, tick_number):
     return f'{int(value)}'
 
 # Create the formatter
-formatter = FuncFormatter(format_ticks)
+formatter = FuncFormatter(format_axis_ticks)
 
 # Get the colorbar from the current figure and set the formatter
 cbar = ax.get_figure().colorbar(ax.collections[0], ax=ax, orientation='vertical', shrink=0.6)
@@ -129,7 +141,7 @@ lsoa_deprivation = pd.merge(lsoa_deprivation, boundary_lookup, how='right', left
 
 
 # Join to london_lsoa_temps
-london_lsoa_temps = gpd.read_file(os.path.join(FIN_DIR,f'{today}_LSOA_temps.shp'))
+london_lsoa_temps = gpd.read_file(os.path.join(DATA_DIR, f'{run}-1', 'final',f'{run}_LSOA_temps',f'{run}_LSOA_temps.shp'))
 london_lsoas_dep = pd.merge(london_lsoa_temps, lsoa_deprivation, how='left', left_on='LSOA21CD', right_on='LSOA21CD')
 # Fill in LSOAs with NA for deprivation with avg of surrounding LSOAs
 
@@ -163,20 +175,56 @@ def calculate_average_multiple_deprivation(row):
 london_lsoas_dep['multiple_deprivation_clean'] = london_lsoas_dep.apply(calculate_average_multiple_deprivation, axis=1)
 
 ## Average to LAD 
+london_lads = london_avg_temps[['LAD22NM', 'geometry']].to_crs('EPSG:4326')
+
 london_lads_dep = london_lsoas_dep.groupby('LAD22NM').agg({'avg_temp': 'mean', 'multiple_deprivation_clean': 'mean'})
-london_lads_bng_select = london_lads_bng[['LAD22NM', 'geometry']]
-london_lads_dep = pd.merge(london_lads_dep, london_lads_bng_select, how = 'left', on = 'LAD22NM')
+london_lads_dep = pd.merge(london_lads_dep, london_lads, how = 'left', on = 'LAD22NM')
 london_lads_dep = gpd.GeoDataFrame(london_lads_dep, geometry='geometry')
 
 # Calculate correlation
 correlation = london_lads_dep['multiple_deprivation_clean'].corr(london_lads_dep['avg_temp']).round(2)
 print(f"Correlation between multiple deprivation and temperature is: {correlation}")
 
+# create percentile and set index
+create_percentile(df = london_lads_dep, col = 'multiple_deprivation_clean', new_name = 'perc_dep')
+london_lads_dep = london_lads_dep.set_index('LAD22NM')
 
-# MAKE SCATTER INTERACTIVE ON PLOTLY DASH
-# Scatter plot with transparency
-plt.figure(figsize=(7, 4))
-plt.scatter(london_lads_dep['multiple_deprivation_clean'], london_lads_dep['avg_temp'], alpha=0.15)
+
+## 4. Plotly of deprivation by LAD ----------------------------------------------
+
+fig = px.choropleth_mapbox(
+    london_lads_dep,
+    geojson=london_lads_dep.geometry,
+    locations=london_lads_dep.index,
+    color='perc_dep',
+    color_continuous_scale="matter",
+    mapbox_style="carto-positron",
+    center={"lat": london_lads_dep.geometry.centroid.y.mean(), "lon": london_lads_dep.geometry.centroid.x.mean()},
+    zoom=9.5,
+    opacity=0.95,
+    labels={'perc_dep': 'Deprivation Percentile', '_index': "Local Authority"},
+    title='Deprivation Percentile'
+)
+
+# save the plot
+fig.write_html(os.path.join(DATA_DIR, f'{run}-1', 'final', "dep_by_lad_map.html"))
+
+
+
+# 5. Temp vs deprivation scatter ------------------------------------------------
+
+london_lads_dep = london_lads_dep.round({'avg_temp':1, 'multiple_deprivation_clean':1})
+
+## INTERACTIVE SCATTER
+fig = px.scatter(
+    london_lads_dep,
+    x="multiple_deprivation_clean", 
+    y="avg_temp", 
+    title='Avg Deprivation vs Temperature by London Borough',
+    labels={'multiple_deprivation_clean': 'Avg Deprivation', 'avg_temp': 'Avg Temperature'},
+    opacity=0.5,
+    hover_name=london_lads_dep.index
+)
 
 # Line of best fit
 x = london_lads_dep['multiple_deprivation_clean']
@@ -185,6 +233,33 @@ coefficients = np.polyfit(x, y, 3)
 polynomial = np.poly1d(coefficients)
 x_fit = np.linspace(min(x), max(x), 100)
 y_fit = polynomial(x_fit)
+
+fig.add_trace(go.Scatter(x=x_fit, y=y_fit, mode='lines', name='Trend line',
+                         line=dict(color='red', dash='dash', width=2),
+                         hoverinfo='skip'))
+
+# formatting
+fig.update_layout(
+    paper_bgcolor='white',  # Background color
+    plot_bgcolor='white',   # Plot area background color
+    width=900,              
+    height=550,
+    xaxis_title='Avg Deprivation Index', 
+    yaxis_title='Avg Temperature (°C)',
+    xaxis = dict(showline=True, linecolor='black', linewidth=1),
+    yaxis = dict(showline=True,  linecolor='black',  linewidth=1),
+    showlegend = False
+)
+fig.update_traces(marker=dict(size=9, color = '#2F6F7A')) 
+fig.show()
+# save the plot
+fig.write_html(os.path.join(DATA_DIR, f'{run}-1', 'final', "dep_temp_scatter.html"))
+
+
+
+## STATIC SCATTER
+plt.figure(figsize=(7, 4))
+plt.scatter(london_lads_dep['multiple_deprivation_clean'], london_lads_dep['avg_temp'], alpha=0.15)
 plt.plot(x_fit, y_fit, color='red', linestyle='dashed', linewidth=2, label='Trend line')
 
 # Title and labels
