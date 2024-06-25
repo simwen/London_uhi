@@ -44,10 +44,10 @@ fig = px.choropleth_mapbox(
     color_continuous_scale="matter",
     mapbox_style="carto-positron",
     center={"lat": london_temps_plotly.geometry.centroid.y.mean(), "lon": london_temps_plotly.geometry.centroid.x.mean()},
-    zoom=9.5,
+    zoom=8.2,
     opacity=0.95,
     labels={'perc_temp': 'Temperature percentile', '_index': "Local Authority"},
-    title='Temperature Percentile'
+    title="London Boroughs' Average Temperature <br><br><sup>Interactive map - zoom & hover for detail</sup>"
 )
 
 # save the plot
@@ -146,7 +146,8 @@ london_lsoas_dep = pd.merge(london_lsoa_temps, lsoa_deprivation, how='left', lef
 # Fill in LSOAs with NA for deprivation with avg of surrounding LSOAs
 
 # Create a spatial index for efficient spatial queries (a data structure that enables faster retrieval of spatial information)
-london_lsoas_dep_sindex = london_lsoas_dep.sindex
+# import pygeos
+# london_lsoas_dep_sindex = london_lsoas_dep.sindex
 
 # Create function to calculate average multiple_deprivation based on neighboring areas if nan
 def calculate_average_multiple_deprivation(row):
@@ -156,7 +157,7 @@ def calculate_average_multiple_deprivation(row):
         bbox = row['geometry'].bounds
 
         # Use spatial index to find neighboring polygons
-        possible_matches_index = list(london_lsoas_dep_sindex.intersection(bbox))
+        possible_matches_index = list(london_lsoas_dep.intersection(bbox))
         possible_matches = london_lsoas_dep.iloc[possible_matches_index]
 
         # Filter out the current polygon
@@ -189,6 +190,19 @@ print(f"Correlation between multiple deprivation and temperature is: {correlatio
 create_percentile(df = london_lads_dep, col = 'multiple_deprivation_clean', new_name = 'perc_dep')
 london_lads_dep = london_lads_dep.set_index('LAD22NM')
 
+# create percentile and set index
+create_percentile(df = london_lsoas_dep, col = 'multiple_deprivation_clean', new_name = 'perc_dep')
+create_percentile(df = london_lsoas_dep, col = 'avg_temp', new_name = 'perc_temp')
+
+## Create top 5 stat
+top_bottom_num = 5
+
+london_lsoas_dep_cols = london_lsoas_dep[['LSOA21CD', 'LSOA21NM', 'multiple_deprivation_clean','perc_dep', 'avg_temp', 'perc_temp']].sort_values(by='multiple_deprivation_clean', ascending = False)
+most_deprived_temp = london_lsoas_dep_cols['avg_temp'].head(top_bottom_num).mean()
+least_deprived_temp = london_lsoas_dep_cols['avg_temp'].tail(top_bottom_num).mean()
+
+temp_diff = most_deprived_temp-least_deprived_temp
+print(f'The {top_bottom_num} most deprived LSOAs were on average {temp_diff:.1f}°C hotter than the {top_bottom_num} least deprived')
 
 ## 4. Plotly of deprivation by LAD ----------------------------------------------
 
@@ -200,15 +214,14 @@ fig = px.choropleth_mapbox(
     color_continuous_scale="matter",
     mapbox_style="carto-positron",
     center={"lat": london_lads_dep.geometry.centroid.y.mean(), "lon": london_lads_dep.geometry.centroid.x.mean()},
-    zoom=9.5,
+    zoom=8.2,
     opacity=0.95,
     labels={'perc_dep': 'Deprivation Percentile', '_index': "Local Authority"},
-    title='Deprivation Percentile'
+    title="London Borough Deprivation Levels <br><br><sup>Interactive map - zoom & hover for detail</sup>"
 )
 
 # save the plot
 fig.write_html(os.path.join(DATA_DIR, f'{run}-1', 'final', "dep_by_lad_map.html"))
-
 
 
 # 5. Temp vs deprivation scatter ------------------------------------------------
@@ -220,7 +233,7 @@ fig = px.scatter(
     london_lads_dep,
     x="multiple_deprivation_clean", 
     y="avg_temp", 
-    title='Avg Deprivation vs Temperature by London Borough',
+    title='Avg Deprivation vs Temperature by London Borough <br><sup>Interactive chart - hover for detail</sup>',
     labels={'multiple_deprivation_clean': 'Avg Deprivation', 'avg_temp': 'Avg Temperature'},
     opacity=0.5,
     hover_name=london_lads_dep.index
@@ -242,8 +255,8 @@ fig.add_trace(go.Scatter(x=x_fit, y=y_fit, mode='lines', name='Trend line',
 fig.update_layout(
     paper_bgcolor='white',  # Background color
     plot_bgcolor='white',   # Plot area background color
-    width=900,              
-    height=550,
+    width=640,              
+    height=450,
     xaxis_title='Avg Deprivation Index', 
     yaxis_title='Avg Temperature (°C)',
     xaxis = dict(showline=True, linecolor='black', linewidth=1),
