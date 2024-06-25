@@ -171,6 +171,8 @@ def run(username, password, today, ALL_RUNS, RAW_DIR, INT_DIR):
     # Drop scenes which don't meet criteria
     df_scenes_filtered = df_scenes[~mask]
 
+    df_scenes_filtered.to_csv(os.path.join(RAW_DIR, "df_scenes_filtered.csv"))
+
     print(f'df_scenes_filtered has shape: {df_scenes_filtered.shape}')
    
     # Load england LSOAs
