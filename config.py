@@ -1,10 +1,3 @@
-#!/usr/bin/env python3
-# -*- coding: utf-8 -*-
-"""
-Created on Wed May  1 21:08:27 2024
-
-@author: Sim
-"""
 print("1: Starting config.py")
 
 from datetime import date
@@ -15,7 +8,7 @@ username = "SimWen"
 password = "..."
 
 # Set directories
-BASE_DIR = 'Z:\Resources\Personal\Simeon Wentzel\london_uhi_data'
+BASE_DIR = '/Users/Sim/Documents/Other/Programming/Personal Projects/Climate & Health/Landsat'
 DATA_DIR = os.path.join(BASE_DIR,'data')
 
 today = date.today()

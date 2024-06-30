@@ -13,7 +13,7 @@ from scipy.stats import percentileofscore
 import plotly.graph_objects as go
 
 ## 1. Plotly of temperature by LAD ----------------------------------------------
-run = '2024-06-20'
+run = '2024-06-26'
 
 ## Load avg temp by geog (LAD)
 # Plotly uses standard lat-longs so we change the crs
@@ -124,7 +124,7 @@ with rio.open(os.path.join(DATA_DIR, f'{run}-1', 'intermediate',f'{run}_avg_celc
 # Load deprivation by lsoa
 # Deprivation indices: b. Income Deprivation Domain & e. Health Deprivation and Disability Domain
 ## https://opendatacommunities.org/resource?uri=http%3A%2F%2Fopendatacommunities.org%2Fdata%2Fsocietal-wellbeing%2Fimd2019%2Findices
-lsoa_deprivation = pd.read_csv(os.path.join(ALL_RUNS,'deprivation_lsoa_2019.csv'))
+lsoa_deprivation = pd.read_csv(os.path.join(ALL_RUNS,'imd2019lsoa.csv'))
 lsoa_deprivation = lsoa_deprivation[lsoa_deprivation['Measurement'] == 'Score']
 lsoa_deprivation = lsoa_deprivation[lsoa_deprivation['Indices of Deprivation'] == 'a. Index of Multiple Deprivation (IMD)']
 lsoa_deprivation = lsoa_deprivation[lsoa_deprivation['DateCode'] == 2019]

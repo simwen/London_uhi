@@ -1,8 +1,3 @@
-"""
-Created on Fri Mar  1 19:02:56 2024
-
-@author: Sim
-"""
 # Load required libs
 from landsatxplore.api import API
 from landsatxplore.earthexplorer import EarthExplorer
@@ -59,7 +54,6 @@ def run(username, password, today, ALL_RUNS, RAW_DIR, INT_DIR):
     lad_list = lsoa_list[['LEP21NM1','LAD22CD','LAD22NM']].drop_duplicates()
 
     # Load UK LADS BNG CRS 
-    ## https://geoportal.statistics.gov.uk/datasets/53d574e525d74002be9cf8419e4ee031_0/explore
     ## https://geoportal.statistics.gov.uk/datasets/127c4bda06314409a1fa0df505f510e6_0/explore
     # uk_lads = gpd.read_file(os.path.join(ALL_RUNS, 'LAD_Dec_2017_FEB_in_Great_Britain.shp'))
     uk_lads = gpd.read_file(os.path.join(ALL_RUNS, 'LAD_Dec_2023_Boundaries', 'LAD_DEC_2023_UK_BFC.shp'))
